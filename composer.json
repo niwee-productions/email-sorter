@@ -1,0 +1,17 @@
+{
+    "name": "nicolasboyer/mailsoter",
+    "autoload": {
+        "psr-4": {
+            "Nicolasboyer\\Mailsoter\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Nicolas Boyer",
+            "email": "nicolas@niwee.fr"
+        }
+    ],
+    "require": {
+        "php-imap/php-imap": "dev-master"
+    }
+}
