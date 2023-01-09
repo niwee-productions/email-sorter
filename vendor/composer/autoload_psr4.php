@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Symfony\\Component\\Dotenv\\' => array($vendorDir . '/symfony/dotenv'),
     'PhpImap\\' => array($vendorDir . '/php-imap/php-imap/src/PhpImap'),
     'Nicolasboyer\\Mailsoter\\' => array($baseDir . '/src'),
 );

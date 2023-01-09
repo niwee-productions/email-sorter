@@ -7,6 +7,10 @@ namespace Composer\Autoload;
 class ComposerStaticInitef10cd8aedd7ef877050cf29c56e4a41
 {
     public static $prefixLengthsPsr4 = array (
+        'S' => 
+        array (
+            'Symfony\\Component\\Dotenv\\' => 25,
+        ),
         'P' => 
         array (
             'PhpImap\\' => 8,
@@ -18,6 +22,10 @@ class ComposerStaticInitef10cd8aedd7ef877050cf29c56e4a41
     );
 
     public static $prefixDirsPsr4 = array (
+        'Symfony\\Component\\Dotenv\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/dotenv',
+        ),
         'PhpImap\\' => 
         array (
             0 => __DIR__ . '/..' . '/php-imap/php-imap/src/PhpImap',

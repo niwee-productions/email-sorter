@@ -12,6 +12,7 @@
         }
     ],
     "require": {
-        "php-imap/php-imap": "dev-master"
+        "php-imap/php-imap": "dev-master",
+        "symfony/dotenv": "^6.2"
     }
 }
