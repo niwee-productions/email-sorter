@@ -7,12 +7,17 @@ namespace Composer\Autoload;
 class ComposerStaticInitef10cd8aedd7ef877050cf29c56e4a41
 {
     public static $prefixLengthsPsr4 = array (
+        'W' => 
+        array (
+            'Whoops\\' => 7,
+        ),
         'S' => 
         array (
             'Symfony\\Component\\Dotenv\\' => 25,
         ),
         'P' => 
         array (
+            'Psr\\Log\\' => 8,
             'PhpImap\\' => 8,
         ),
         'N' => 
@@ -22,9 +27,17 @@ class ComposerStaticInitef10cd8aedd7ef877050cf29c56e4a41
     );
 
     public static $prefixDirsPsr4 = array (
+        'Whoops\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/filp/whoops/src/Whoops',
+        ),
         'Symfony\\Component\\Dotenv\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/dotenv',
+        ),
+        'Psr\\Log\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/psr/log/src',
         ),
         'PhpImap\\' => 
         array (

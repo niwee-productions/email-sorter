@@ -20,6 +20,10 @@
 
         require_once 'vendor/autoload.php';
 
+        $whoops = new \Whoops\Run;
+        $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+        $whoops->register();
+
         echo "<h1>Single Page Mail Sorter</h1>";
 
         $env_file = __DIR__ . '/.env';
@@ -36,16 +40,35 @@
         $folder = "INBOX";
 
 
+        try
+        {
+            // Get all emails (messages)
+            // PHP.net imap_search criteria: http://php.net/manual/en/function.imap-search.php
+            $mailbox = new PhpImap\Mailbox(
+                '{' . $imap_url . '}' . $folder, // IMAP server and mailbox folder
+                "$email", // Username for the before configured mailbox
+                "$password", // Password for the before configured username
+                __DIR__, // Directory, where attachments will be saved (optional)
+                'UTF-8', // Server encoding (optional)
+                true, // Trim leading/ending whitespaces of IMAP path (optional)
+                false // Attachment filename mode (optional; false = random filename; true = original filename)
+            );
+        }
+        catch (PhpImap\Exceptions\ConnectionException)
+        {
+            throw new Exception("Connection failed");
+        }
+        catch (Exception)
+        {
+            throw new Exception("Something went wrong");
+        }
 
-        $mailbox = new PhpImap\Mailbox(
-            '{' . $imap_url . '}' . $folder, // IMAP server and mailbox folder
-            "$email", // Username for the before configured mailbox
-            "$password", // Password for the before configured username
-            __DIR__, // Directory, where attachments will be saved (optional)
-            'UTF-8', // Server encoding (optional)
-            true, // Trim leading/ending whitespaces of IMAP path (optional)
-            false // Attachment filename mode (optional; false = random filename; true = original filename)
-        );
+        if (!$mailbox)
+        {
+            die("<div class='alert alert-danger mt-3' role='alert'>
+                Connection failed
+            </div>");
+        }
 
         // set some connection arguments (if appropriate)
         $mailbox->setConnectionArgs(
@@ -61,17 +84,21 @@
                 <h6>IMAP server: <?php echo $imap_url; ?></h6>
                 <p>Folder: <?php echo $folder; ?></p>
                 <?php
-
                 try
                 {
-                    // Get all emails (messages)
-                    // PHP.net imap_search criteria: http://php.net/manual/en/function.imap-search.php
                     $mailsIds = $mailbox->searchMailbox('ALL');
                 }
-                catch (Exception $e)
+                catch (PhpImap\Exceptions\ConnectionException)
                 {
-                    echo "IMAP connection failed: " . $e->getMessage();
-                    die();
+                    die("<div class='alert alert-danger mt-3' role='alert'>
+                        Connection failed. Please check your parameters in the .env file.
+                        </div>");
+                }
+                catch (Exception)
+                {
+                    die("<div class='alert alert-danger mt-3' role='alert'>
+                        Something went wrong
+                        </div>");
                 }
 
                 // If $mailsIds is empty, no emails could be found
@@ -101,61 +128,95 @@
                 }
 
                 // Search form
+                try
+                {
+                    $mailsIds = $mailbox->searchMailbox('ALL');
         ?>
-        <div class="shadow rounded p-3 my-5">
-            <h5>Search</h5>
-            <form action="index.php?search" method="get">
-                <input class="form-control mb-3" type="hidden" name="search" value="true">
-                <input class="form-control mb-3" type="text" name="keywords" value="<?php echo (isset($_GET["keywords"]) ? $_GET['keywords'] : ""); ?>" placeholder="keywords">
-                <select class="form-select mb-3" name="field" id="selectField">
-                    <option <?php isset($_GET['field']) && $_GET['field'] === "FROM" && "selected"; ?> value="FROM">From</option>
-                    <option <?php isset($_GET['field']) && $_GET['field'] === "TO" && "selected"; ?> value="TO">To</option>
-                    <option <?php isset($_GET['field']) && $_GET['field'] === "SUBJECT" && "selected"; ?> value="SUBJECT">Subject</option>
-                    <option <?php isset($_GET['field']) && $_GET['field'] === "BODY" && "selected"; ?> value="BODY">Body</option>
-                </select>
-                <input type="submit" value="Search" class="btn btn-primary">
-            </form>
-        </div>
-        <?php if (isset($_GET['field'])) : ?>
-            <script type="text/javascript">
-                document.getElementById('selectField').value = "<?php echo $_GET['field']; ?>";
-            </script>
-        <?php endif; ?>
+            <div class="shadow rounded p-3 my-5">
+                <h5>Search</h5>
+                <form action="index.php?search" method="get">
+                    <input class="form-control mb-3" type="hidden" name="search" value="true">
+                    <input class="form-control mb-3" type="text" name="keywords" value="<?php echo (isset($_GET["keywords"]) ? $_GET['keywords'] : ""); ?>" placeholder="keywords">
+                    <select class="form-select mb-3" name="field" id="selectField">
+                        <option <?php isset($_GET['field']) && $_GET['field'] === "FROM" && "selected"; ?> value="FROM">From</option>
+                        <option <?php isset($_GET['field']) && $_GET['field'] === "TO" && "selected"; ?> value="TO">To</option>
+                        <option <?php isset($_GET['field']) && $_GET['field'] === "SUBJECT" && "selected"; ?> value="SUBJECT">Subject</option>
+                        <option <?php isset($_GET['field']) && $_GET['field'] === "BODY" && "selected"; ?> value="BODY">Body</option>
+                    </select>
+                    <input type="submit" value="Search" class="btn btn-primary">
+                </form>
+            </div>
+            <?php if (isset($_GET['field'])) : ?>
+                <script type="text/javascript">
+                    document.getElementById('selectField').value = "<?php echo $_GET['field']; ?>";
+                </script>
+            <?php endif; ?>
         <?php
-        $search;
 
-        if (isset($_GET['search']) && isset($_GET['keywords']) && isset($_GET['field']) && !isset($_GET['deleteEmails']))
-        {
-            $search = $_GET['search'];
-            $field = $_GET['field'];
-            $keywords = $_GET['keywords'];
+                }
+                catch (PhpImap\Exceptions\ConnectionException)
+                {
+                    die("<div class='alert alert-danger mt-3' role='alert'>
+                        Connection failed. Please check your parameters in the .env file.
+                        </div>");
+                }
+                catch (Exception)
+                {
+                    die("<div class='alert alert-danger mt-3' role='alert'>
+                        Something went wrong
+                        </div>");
+                }
 
-            if (empty($search))
-            {
-                die('Search field is empty.');
-            }
+
+                $search;
+
+                if (isset($_GET['search']) && isset($_GET['keywords']) && isset($_GET['field']) && !isset($_GET['deleteEmails']))
+                {
+                    $search = $_GET['search'];
+                    $field = $_GET['field'];
+                    $keywords = $_GET['keywords'];
+
+                    if (empty($search))
+                    {
+                        die('Search field is empty.');
+                    }
         ?>
             <?php
 
-            // Search for a specific mail
-            try
-            {
-                $search = $mailbox->searchMailbox("$field $keywords");
-            }
-            catch (Exception $e)
-            {
-                die("<div class='alert alert-danger mt-3' role='alert'>
+                    // Search for a specific mail
+                    try
+                    {
+                        try
+                        {
+                            $search = $mailbox->searchMailbox("$field $keywords");
+                        }
+                        catch (PhpImap\Exceptions\ConnectionException)
+                        {
+                            die("<div class='alert alert-danger mt-3' role='alert'>
+                        Connection failed. Please check your parameters in the .env file.
+                        </div>");
+                        }
+                        catch (Exception)
+                        {
+                            die("<div class='alert alert-danger mt-3' role='alert'>
+                        Something went wrong
+                        </div>");
+                        }
+                    }
+                    catch (Exception $e)
+                    {
+                        die("<div class='alert alert-danger mt-3' role='alert'>
                         " . $e->getMessage() . "
                     </div>");
-            }
-            if (!$search)
-            {
-                die("
+                    }
+                    if (!$search)
+                    {
+                        die("
                 <div class='alert alert-danger mt-3' role='alert'>
                     No results found for '$keywords'
                 </div>
                 ");
-            }
+                    }
 
             ?>
             <div class="shadow rounded p-3 mt-3">
@@ -163,8 +224,8 @@
                 <br>
                 <br>
                 <?php
-                foreach ($search as $result)
-                {
+                    foreach ($search as $result)
+                    {
                 ?>
                     <div class="card mb-3">
                         <div class="card-body">
@@ -185,9 +246,9 @@
                         </div>
                     </div>
                 <?php
-                }
+                    }
 
-                // Form to delete search results
+                    // Form to delete search results
                 ?>
             </div>
             <form action="index.php?search=true&keywords=<?php echo $keywords; ?>&field=<?php echo $field; ?>&deleteEmails" method="get">
@@ -198,39 +259,63 @@
                 <input type="submit" value="Delete all search results" class="btn btn-danger my-3 w-100">
             </form>
             <?php
-        }
 
-        // Delete search results
-        if (isset($_GET['deleteEmails']) && !isset($_GET['confirmDeleteEmails']))
-        {
-            try
-            {
-                if (empty($_GET['keywords']) || empty($_GET['field']))
-                {
-                    die('<div class="alert alert-danger mt-3" role="alert">
-                            No search results to delete!
-                        </div>');
+                    // Form to declare all emails as spam
+            ?>
+            <form action="index.php?search=true&keywords=<?php echo $keywords; ?>&field=<?php echo $field; ?>&declareSpam" method="get">
+                <input type="hidden" name="search" value="true">
+                <input type="hidden" name="keywords" value="<?php echo $keywords; ?>">
+                <input type="hidden" name="field" value="<?php echo $field; ?>">
+                <input type="hidden" name="declareSpam" value="true">
+                <input type="submit" value="Declare all search results as spam" class="btn btn-danger my-3 w-100">
+            </form>
+            <?php
                 }
 
-                $field = $_GET['field'];
-                $keywords = $_GET['keywords'];
+                if (isset($_GET['declareSpam']))
+                {
+                    $emails_to_declare_as_spam = $mailbox->searchMailbox("$field $keywords");
+                    foreach ($emails_to_declare_as_spam as $email)
+                    {
+                        $mailbox->moveMail($email, "Spam");
+                    }
+                    echo "<div class='alert alert-success mt-3' role='alert'>
+                    All search results have been declared as spam!
+                </div>";
+                }
+
+
+                // Delete search results
+                if (isset($_GET['deleteEmails']) && !isset($_GET['confirmDeleteEmails']))
+                {
+                    try
+                    {
+                        if (empty($_GET['keywords']) || empty($_GET['field']))
+                        {
+                            die('<div class="alert alert-danger mt-3" role="alert">
+                            No search results to delete!
+                        </div>');
+                        }
+
+                        $field = $_GET['field'];
+                        $keywords = $_GET['keywords'];
             ?>
                 <div class="shadow rounded p-5 my-5">
                     <h5>Really delete these emails ?</h5>
                     <?php
-                    $emails_to_delete = $mailbox->searchMailbox("$field $keywords");
-                    foreach ($emails_to_delete as $email)
-                    {
+                        $emails_to_delete = $mailbox->searchMailbox("$field $keywords");
+                        foreach ($emails_to_delete as $email)
+                        {
                     ?>
                         <div class="card mb-3">
                             <div class="card-body">
                                 <h5 class="card-title
                         <?php
-                        $mail = $mailbox->getMail($email);
-                        if ($mail->isUnseen)
-                        {
-                            echo "text-primary";
-                        }
+                            $mail = $mailbox->getMail($email);
+                            if ($mail->isUnseen)
+                            {
+                                echo "text-primary";
+                            }
                         ?>
                     
                         ">
@@ -242,7 +327,7 @@
                             </div>
                         </div>
                     <?php
-                    }
+                        }
 
 
                     ?>
@@ -256,99 +341,99 @@
                     </form>
                 </div>
             <?php
-            }
-            catch (Exception $e)
-            {
-                echo "IMAP connection failed: " . $e->getMessage();
-                die();
-            }
-        }
-
-        // Delete search results
-        if (isset($_GET['deleteEmails']) && isset($_GET['confirmDeleteEmails']))
-        {
-            try
-            {
-                $field = $_GET['field'];
-                $keywords = $_GET['keywords'];
-
-                $emails_to_delete = $mailbox->searchMailbox("$field $keywords");
-                foreach ($emails_to_delete as $email)
-                {
-                    $mailbox->deleteMail($email);
+                    }
+                    catch (Exception $e)
+                    {
+                        echo "IMAP connection failed: " . $e->getMessage();
+                        die();
+                    }
                 }
+
+                // Delete search results
+                if (isset($_GET['deleteEmails']) && isset($_GET['confirmDeleteEmails']))
+                {
+                    try
+                    {
+                        $field = $_GET['field'];
+                        $keywords = $_GET['keywords'];
+
+                        $emails_to_delete = $mailbox->searchMailbox("$field $keywords");
+                        foreach ($emails_to_delete as $email)
+                        {
+                            $mailbox->deleteMail($email);
+                        }
             ?>
                 <div class="alert alert-success" role="alert">
                     Search results deleted!
                 </div>
             <?php
-            }
-            catch (Exception $e)
-            {
-                echo "IMAP connection failed: " . $e->getMessage();
-                die();
-            }
-        }
+                    }
+                    catch (Exception $e)
+                    {
+                        echo "IMAP connection failed: " . $e->getMessage();
+                        die();
+                    }
+                }
 
-        if (isset($_GET['viewAll']))
-        {
+                if (isset($_GET['viewAll']))
+                {
 
-            try
-            {
-                $allEmail = $mailbox->searchMailbox("ALL");
-            }
-            catch (Exception $e)
-            {
-                die("<div class='alert alert-danger mt-3' role='alert'>
+                    try
+                    {
+                        $allEmail = $mailbox->searchMailbox("ALL");
+                    }
+                    catch (Exception $e)
+                    {
+                        die("<div class='alert alert-danger mt-3' role='alert'>
                         " . $e->getMessage() . "
                     </div>");
-            }
-            if (!$allEmail)
-            {
-                die("
+                    }
+                    if (!$allEmail)
+                    {
+                        die("
                 <div class='alert alert-danger mt-3' role='alert'>
                     No emails found!
                 </div>
                 ");
-            }
+                    }
 
             ?>
             <div class="shadow rounded p-3 mt-3">
                 <h3>All emails</h3>
                 <?php
-                $email_per_page = 10;
-                $pagination = $_GET['pagination'] ?? 1;
-                $i = 0;
-                foreach ($allEmail as $result)
-                {
-                    if ($pagination == 1)
+                    $email_per_page = 10;
+                    $pagination = $_GET['pagination'] ?? 1;
+                    $i = 0;
+                    foreach ($allEmail as $result)
                     {
-                        $start = 0;
-                    }
-                    else
-                    {
-                        $start = ($pagination - 1) * $email_per_page;
-                    }
+                        if ($pagination == 1)
+                        {
+                            $start = 0;
+                        }
+                        else
+                        {
+                            $start = ($pagination - 1) * $email_per_page;
+                        }
 
 
-                    if ($start <= $i && $i <= $start + $email_per_page)
-                    {
+                        if ($start <= $i && $i <= $start + $email_per_page)
+                        {
                 ?>
                         <div class="card mb-3">
                             <div class="card-body">
                                 <h5 class="card-title
                         <?php
-                        $mail = $mailbox->getMail($result);
-                        $date = $mail->date;
-                        $formattedDate = date("\l\\e d/m/Y \à H:i", strtotime($date));
-                        if ($mail->isUnseen)
-                        {
-                            echo "text-primary";
-                        }
-                        else
-                        {
-                            echo "text-secondary";
-                        }
+                            $mail = $mailbox->getMail($result);
+                            $date = $mail->date;
+                            $formattedDate = date("\l\\e d/m/Y \à H:i", strtotime($date));
+                            if ($mail->isUnseen)
+                            {
+                                echo "text-primary";
+                            }
+                            else
+                            {
+                                echo "text-secondary";
+                            }
                         ?>
                         ">
                                     <?php echo $mail->subject; ?>
@@ -363,37 +448,37 @@
                             </div>
                         </div>
                 <?php
+                        }
+                        $i++;
                     }
-                    $i++;
-                }
 
-                // Form to delete search results
+                    // Form to delete search results
                 ?>
                 <nav aria-label="Page navigation example">
                     <ul class="pagination
                 <?php
-                if (count($allEmail) <= $email_per_page)
-                {
-                    echo "d-none";
-                }
+                    if (count($allEmail) <= $email_per_page)
+                    {
+                        echo "d-none";
+                    }
                 ?>
                 ">
                         <li class="page-item
                 <?php
-                if ($pagination == 1)
-                {
-                    echo "disabled";
-                }
+                    if ($pagination == 1)
+                    {
+                        echo "disabled";
+                    }
                 ?>
                 ">
                             <a class="page-link" href="index.php?viewAll&pagination=<?php echo $pagination - 1; ?>" tabindex="-1">Previous</a>
                         </li>
                         <li class="page-item
                 <?php
-                if ($pagination == ceil(count($allEmail) / $email_per_page))
-                {
-                    echo "disabled";
-                }
+                    if ($pagination == ceil(count($allEmail) / $email_per_page))
+                    {
+                        echo "disabled";
+                    }
                 ?>
                 ">
                             <a class="page-link" href="index.php?viewAll&pagination=<?php echo $pagination + 1; ?>">Next</a>
@@ -404,7 +489,7 @@
 
             </div>
         <?php
-        }
+                }
 
 
         ?>
