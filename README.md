@@ -2,6 +2,13 @@
 
 This app can receive a list of emails which you can search and mass delete to clean your inbox.
 
+## Requirements
+
+- PHP 8.2
+- Composer
+- php-mbstring
+- php-imap
+
 ## Getting Started
 
 ```bash
